@@ -3,6 +3,11 @@
 A modular Python-based personal investment analytics system for a long-term,
 passive buy-and-hold portfolio — not a trading tool, no buy/sell signals.
 
+> **Disclaimer:** built for personal use and learning. Nothing in this
+> repository (notebooks, dashboard or newsletter) is investment advice;
+> all figures are what-if analyses on historical data and simplifying
+> assumptions.
+
 ## Project Goal
 
 This project processes brokerage transaction exports, reconstructs portfolio
@@ -290,7 +295,9 @@ obvious from a column name alone:
 The metrics worth remembering — the ones that aren't self-explanatory from
 their column name. Simple arithmetic (market value, weight, cash inflow,
 cost basis, etc.) isn't listed here; the notebook that produces a given
-number is always the source of truth.
+number is always the source of truth. Weights and cutoffs below are the
+defaults defined as constants in `src/`; the dashboard explains each score
+with the values actually in use.
 
 | Metric | Definition | Why it matters |
 |---|---|---|
@@ -336,18 +343,37 @@ Caveats worth keeping in mind:
   handful, a single outlier can swing another stock's percentile by a full
   quartile. Read the ranking as directional, not as a precise cardinal score.
 
-Shared implementations live in `src/risk.py` (Sharpe, Sortino, Calmar, Risk
-Contribution, HHI/Effective N), `src/backtest.py` (rebalancing, DCA, XIRR),
-`src/optimization.py` (mean-variance / risk-parity solvers),
-`src/stress.py` (stress scenarios), `src/exposure.py` (look-through
-exposure, market beta),
-`src/selection.py` (Selection Score) and `src/fundamentals.py` (Fundamental
-Score) — unit-tested, single source of
-truth if a number looks off.
+Shared implementations live in `src/` — `risk.py` (Sharpe, Sortino, Calmar,
+risk contribution, HHI/effective N), `portfolio.py` (holdings, rebalancing),
+`backtest.py` (rebalancing, DCA, XIRR), `optimization.py` (mean-variance /
+risk-parity solvers), `stress.py` (stress scenarios), `exposure.py`
+(look-through exposure, market beta), `selection.py` (Selection Score),
+`fundamentals.py` (Fundamental Score), `consumption.py` (spending
+categories), `macro_sentiment.py` (speech classification) and `paths.py`
+(data directory) — unit-tested, single source of truth if a number looks
+off.
 
 ## Privacy
 
 Raw transaction exports and all processed/manual private data
-(`data/raw/`, `data/processed/`, `data/manual/`, `data/private/`) are
+(`data/raw/`, `data/processed/`, `data/manual/`, `data/private/`), the
+newsletter's API key (`newsletter-agent/.env`) and its saved issues are
 excluded from this repository. Only code, notebooks (with outputs stripped
-via `nbstripout`), and non-sensitive project structure are version-controlled.
+via `nbstripout`), the fictitious sample data in `data_sample/` and
+non-sensitive project structure are version-controlled. The dashboard only
+listens on `localhost`, so it isn't reachable from other devices on your
+network.
+
+## How This Was Built
+
+Developed with AI assistance: [Claude Code](https://claude.com/claude-code)
+(Anthropic) served as a pair-programming assistant for writing and
+refactoring code, reviewing notebooks and drafting documentation. Scope,
+methodology and design decisions were made by the author, who went through
+the pipeline notebook by notebook; the shared logic is covered by a `pytest`
+suite, and results were cross-checked against real data (e.g. policy rates,
+fund factsheets).
+
+## License
+
+[MIT](LICENSE)
