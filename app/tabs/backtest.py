@@ -219,6 +219,15 @@ def render(
             frontier_fig.add_trace(inefficient_fig.data[0])
 
         strategy_points = optimization_expected_metrics.reset_index().rename(columns={"index": "Strategy"})
+        # Strategies that land on the same point (e.g. both Max-Sharpe variants
+        # at the same corner of the caps) would hide each other: merge them
+        # into one point named "A = B".
+        coords = strategy_points[["Expected Volatility", "Expected Return"]].round(6)
+        strategy_points = (
+            strategy_points.assign(_vol=coords["Expected Volatility"], _ret=coords["Expected Return"])
+            .groupby(["_vol", "_ret"], sort=False, as_index=False)
+            .agg({"Strategy": " = ".join, "Expected Volatility": "first", "Expected Return": "first"})
+        )
         scatter_fig = px.scatter(
             strategy_points,
             x="Expected Volatility",

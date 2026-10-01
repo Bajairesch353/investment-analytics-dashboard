@@ -13,18 +13,27 @@ RATING_COLORS = {
 
 
 def _dimension_scatter(df, x, y, title, x_title, y_title):
-    """Scatter of two fundamental dimension scores (0-100), colored by rating."""
-    data = df.dropna(subset=[x, y])
+    """Scatter of two fundamental dimension scores (0-100), colored by rating.
+
+    Percentile scores of a small universe often tie, so several stocks can sit
+    on the same point: better ratings are drawn last (on top) and stocks on
+    one point share a single label."""
+    data = df.dropna(subset=[x, y]).copy()
+    data["label"] = data.groupby([x, y])["yf_ticker"].transform(", ".join)
+    # one label per point, on the trace drawn last (best rating on top)
+    rank = data["rating"].map({r: i for i, r in enumerate(RATING_COLORS)}).fillna(len(RATING_COLORS))
+    data["label"] = data["label"].where(rank == rank.groupby([data[x], data[y]]).transform("min"), "")
+    draw_order = list(RATING_COLORS)[::-1]  # weak first, strong last = on top
     fig = px.scatter(
         data,
         x=x,
         y=y,
         color="rating",
         color_discrete_map=RATING_COLORS,
-        category_orders={"rating": list(RATING_COLORS)},
-        text="yf_ticker",
+        category_orders={"rating": draw_order},
+        text="label",
         hover_name="name",
-        hover_data={"fundamental_score": ":.0f"},
+        hover_data={"fundamental_score": ":.0f", "label": False},
         title=title
     )
     fig.add_hline(y=50, line_dash="dot", line_color="grey")
@@ -37,6 +46,7 @@ def _dimension_scatter(df, x, y, title, x_title, y_title):
         xaxis_range=[-5, 105],
         yaxis_range=[-5, 105],
         legend_title_text="",
+        legend_traceorder="reversed",  # legend still lists Strong first
         margin=dict(l=10, r=10, t=60, b=20)
     )
     return fig
