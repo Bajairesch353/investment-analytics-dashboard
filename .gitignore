@@ -1,0 +1,54 @@
+# Python / environments
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Claude Code local state
+.claude/worktrees/
+.claude/settings.local.json
+
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Private data
+data/raw/*
+data/private/*
+data/processed/*
+
+!data/raw/.gitkeep
+!data/private/.gitkeep
+!data/processed/.gitkeep
+
+# Manual private configuration
+data/manual/*
+
+# Demo: the fictitious sample export is tracked, everything generated from it is not
+data_sample/manual/
+data_sample/processed/
+data_sample/executed_notebooks/
+
+# Generated outputs / reports
+outcomes/
+reports/
+
+# Newsletter outputs
+*.html
+!data_sample/newsletter/*.html
+
+# newsletter-agent (merged subproject) — generated/runtime artifacts
+newsletter-agent/Newsletter_output/
+newsletter-agent/.adk/
+newsletter-agent/app/.adk/
+newsletter-agent/.google-agents-cli/
+
+# Internal working docs — kept locally, deliberately not in the public repo
+# (see docs/roadmap_v1.md itself for the 15.08.2026 decision)
+CLAUDE.md
+CHANGES_OVERNIGHT.md
+docs/roadmap_v1.md
+notebooks/_archive/

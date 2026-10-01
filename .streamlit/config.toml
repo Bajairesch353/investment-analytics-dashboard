@@ -1,0 +1,4 @@
+[server]
+# Only reachable from this machine -- the dashboard shows real portfolio data,
+# so it should not be visible to others on the same (e.g. public) network.
+address = "localhost"

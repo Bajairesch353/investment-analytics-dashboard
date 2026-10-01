@@ -1,0 +1,36 @@
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  max-width: 1200px;
+  margin: 32px auto;
+  padding: 0 32px;
+  line-height: 1.6;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 14px;
+}
+
+th {
+  background: #111827;
+  color: white;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.pos {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.neg {
+  color: #b91c1c;
+  font-weight: 700;
+}
