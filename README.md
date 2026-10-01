@@ -48,11 +48,26 @@ package — install and run it separately).
 
 ## Setup
 
+**1. Get the code.** With Git:
+
+```bash
+git clone https://github.com/Bajairesch353/investment-analytics-dashboard.git
+cd investment-analytics-dashboard
+```
+
+Without Git: on the GitHub page click **Code → Download ZIP**, unzip it and
+open a terminal in the unzipped folder (e.g.
+`cd ~/Downloads/investment-analytics-dashboard-main`).
+
+**2. Install the dependencies.** The project is developed and tested on
+Python 3.14 (get it from [python.org](https://www.python.org/downloads/) or
+`brew install python@3.14`); older versions may work but aren't tested.
+
 ```bash
 python3.14 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-nbstripout --install   # registers the notebook-output-stripping git filter
+nbstripout --install   # only if you plan to commit: strips notebook outputs (needs Git)
 ```
 
 For Notebook 11 (Macro/Policy Sentiment), also install and start
@@ -87,6 +102,9 @@ directly: `INVESTMENT_DATA_DIR=data_sample streamlit run app/dashboard.py`.
 The pipeline reads the **transaction CSV export from the Trade Republic web
 app** (app.traderepublic.com). Everything stays on your machine: the dashboard
 only listens on `localhost`, and your export and settings are gitignored.
+
+The first two pipeline runs stop on purpose: each time, a notebook asks you
+to fill in one settings file (steps 3–5). That's expected, not an error.
 
 1. **Look at the demo first** (see above) to know what you'll get.
 2. **Export your transactions** in the Trade Republic web app
