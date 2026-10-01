@@ -217,6 +217,23 @@ The currency rows also set the USD share used in the EUR/USD stress
 scenario. Single-stock buckets need no rows. The notebooks validate the
 file and stop with a clear message if sums or bucket names are off.
 
+**Tip: let an LLM do the legwork.** Filling these files by hand is tedious
+but mechanical, so an LLM assistant (e.g. Claude or ChatGPT, ideally with
+web access or the factsheet PDF attached) can draft them. For example:
+
+```text
+Here is the factsheet of my fund <name/ISIN>. Fill in rows for
+bucket_lookthrough_manual.csv (columns: bucket,dimension,category,weight,
+label,source,as_of,note) for the bucket "global_equity": country, sector
+and currency weights (each summing to 1, small ones as "Other ...") and
+the 10 largest holdings as top_holding rows with their US ticker as
+category and the company name as label. Use the factsheet URL as source.
+```
+
+The same works for assigning a `stress_bucket`, `role` and `sector` to each
+holding in `asset_universe_manual.csv`. Review the result before using it:
+the notebooks catch wrong sums or bucket names, but not wrong numbers.
+
 ## Running It
 
 ```bash
