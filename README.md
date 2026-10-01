@@ -237,7 +237,7 @@ the notebooks catch wrong sums or bucket names, but not wrong numbers.
 ## Running It
 
 ```bash
-streamlit run app/dashboard.py        # the dashboard
+streamlit run app/dashboard.py         # the dashboard
 pytest                                 # the test suite
 scripts/run_pipeline.sh                # re-run all 12 notebooks end to end
 ```
