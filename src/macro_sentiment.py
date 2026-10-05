@@ -567,6 +567,28 @@ def fetch_policy_rates(start, timeout=30, retries=2, previous=None):
     return result
 
 
+def policy_rate_snapshot(policy_rates, as_of, days=90):
+    """Per bank: the policy rate in force at `as_of` and its change over the
+    preceding `days` (NaN if the rate history does not reach that far back) —
+    matches the window of `stance_summary`."""
+    columns = ["central_bank", "policy_rate", "policy_rate_change"]
+    if policy_rates.empty:
+        return pd.DataFrame(columns=columns)
+    as_of = pd.Timestamp(as_of)
+    window_start = as_of - pd.Timedelta(days=days)
+    rates = policy_rates.assign(date=pd.to_datetime(policy_rates["date"])).sort_values("date")
+    rows = []
+    for bank, group in rates.groupby("central_bank"):
+        in_force_now = group[group["date"] <= as_of]
+        in_force_before = group[group["date"] <= window_start]
+        if in_force_now.empty:
+            continue
+        current = in_force_now["policy_rate"].iloc[-1]
+        before = in_force_before["policy_rate"].iloc[-1] if len(in_force_before) else float("nan")
+        rows.append({"central_bank": bank, "policy_rate": current, "policy_rate_change": current - before})
+    return pd.DataFrame(rows, columns=columns)
+
+
 def rolling_stance(sentiment, window="90D"):
     """Per bank: rolling mean of stance_score over a calendar window, one
     value per speech (aligned to sentiment's index). Input: monetary policy

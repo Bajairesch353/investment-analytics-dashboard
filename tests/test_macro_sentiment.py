@@ -13,6 +13,7 @@ from src.macro_sentiment import (
     fallback_policy_rates,
     fetch_policy_rates,
     parse_policy_rate_csv,
+    policy_rate_snapshot,
     rolling_stance,
     stance_summary,
     strip_ecb_references,
@@ -138,6 +139,24 @@ def test_fetch_policy_rates_all_down_without_previous_is_empty(monkeypatch):
     assert rates.empty
     assert list(rates.columns) == ["date", "central_bank", "policy_rate"]
     assert rates.attrs["stale_banks"] == ["Fed", "ECB"]
+
+
+def test_policy_rate_snapshot_current_rate_and_window_change():
+    snap = policy_rate_snapshot(PREVIOUS_RATES, as_of="2026-10-05", days=90).set_index("central_bank")
+    assert snap.loc["ECB", "policy_rate"] == 2.50
+    assert snap.loc["ECB", "policy_rate_change"] == pytest.approx(0.25)  # 2.25 in force on 07.07.
+    assert snap.loc["Fed", "policy_rate"] == 4.00
+    assert snap.loc["Fed", "policy_rate_change"] == pytest.approx(0.0)
+
+
+def test_policy_rate_snapshot_history_too_short_gives_nan_change():
+    snap = policy_rate_snapshot(PREVIOUS_RATES, as_of="2026-07-01", days=90).set_index("central_bank")
+    assert snap.loc["ECB", "policy_rate"] == 2.25
+    assert pd.isna(snap.loc["ECB", "policy_rate_change"])
+
+
+def test_policy_rate_snapshot_empty_input():
+    assert policy_rate_snapshot(pd.DataFrame(columns=["date", "central_bank", "policy_rate"]), "2026-10-05").empty
 
 SPEECHES = pd.DataFrame({
     "date": pd.to_datetime(["2026-01-01", "2026-02-01", "2026-06-01", "2026-01-15", "2026-06-20"]),

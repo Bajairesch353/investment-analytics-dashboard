@@ -41,7 +41,11 @@ def render(macro_sentiment, macro_topics, macro_summary, macro_policy_rates):
         as_of = pd.to_datetime(summary["as_of"].iloc[0])
         st.subheader(f"Current Stance (last {days} days to {as_of:%d.%m.%Y})")
 
-        cols = st.columns(len(banks) + 1)
+        rate_banks = [
+            b for b in banks
+            if "policy_rate" in summary.columns and b in summary.index and pd.notna(summary.loc[b, "policy_rate"])
+        ]
+        cols = st.columns(len(banks) + len(rate_banks) + 1)
         for col, bank in zip(cols, banks):
             if bank not in summary.index:
                 continue
@@ -55,6 +59,18 @@ def render(macro_sentiment, macro_topics, macro_summary, macro_policy_rates):
                 f"{row['current_mean']:+.2f}",
                 delta,
                 help="Positive = hawkish, negative = dovish. Delta vs. the preceding window.",
+            )
+
+        rate_names = {"Fed": "Fed funds target (upper bound)", "ECB": "ECB deposit facility rate"}
+        for col, bank in zip(cols[len(banks):], rate_banks):
+            row = summary.loc[bank]
+            change = row["policy_rate_change"]
+            col.metric(
+                f"{bank} Policy Rate",
+                f"{row['policy_rate']:.2f}%",
+                None if pd.isna(change) else f"{change:+.2f} pp",
+                delta_color="off",
+                help=f"{rate_names.get(bank, bank)} at the window end. Delta = change over the last {days} days.",
             )
 
         cols[-1].metric(
