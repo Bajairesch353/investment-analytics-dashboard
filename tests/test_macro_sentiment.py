@@ -1,5 +1,8 @@
 import pandas as pd
 import pytest
+import requests
+
+import src.macro_sentiment as macro_sentiment
 
 from src.macro_sentiment import (
     STANCE_SCORE_MAP,
@@ -7,6 +10,8 @@ from src.macro_sentiment import (
     _normalize_ecb_columns,
     derive_stance_score,
     extract_fed_speech_body,
+    fallback_policy_rates,
+    fetch_policy_rates,
     parse_policy_rate_csv,
     rolling_stance,
     stance_summary,
@@ -75,6 +80,64 @@ def test_parse_policy_rate_csv_keeps_only_changes():
     assert list(rates.index.strftime("%Y-%m-%d")) == ["2025-12-10", "2025-12-11", "2026-09-17"]
     assert list(rates.values) == [4.00, 3.75, 4.00]
 
+
+
+PREVIOUS_RATES = pd.DataFrame({
+    "date": ["2026-06-11", "2026-09-17", "2026-06-05"],
+    "central_bank": ["ECB", "ECB", "Fed"],
+    "policy_rate": [2.25, 2.50, 4.00],
+})
+
+FED_CSV = "observation_date,DFEDTARU\n2026-09-16,3.75\n2026-09-17,4.00\n2026-10-02,4.00\n"
+
+
+class _FakeResponse:
+    def __init__(self, text):
+        self.text = text
+
+    def raise_for_status(self):
+        pass
+
+
+def _fed_ok_ecb_down(url, timeout):
+    if "data-api.ecb.europa.eu" in url:
+        raise requests.ReadTimeout("read timed out")
+    return _FakeResponse(FED_CSV)
+
+
+def test_fallback_policy_rates_returns_only_that_bank():
+    rows = fallback_policy_rates(PREVIOUS_RATES, "ECB")
+    assert list(rows["policy_rate"]) == [2.25, 2.50]
+    assert set(rows["central_bank"]) == {"ECB"}
+
+
+def test_fallback_policy_rates_without_previous_is_empty():
+    assert fallback_policy_rates(None, "ECB").empty
+
+
+def test_fetch_policy_rates_keeps_other_bank_and_previous_values(monkeypatch):
+    monkeypatch.setattr(macro_sentiment.requests, "get", _fed_ok_ecb_down)
+    monkeypatch.setattr(macro_sentiment.time, "sleep", lambda s: None)
+    with pytest.warns(UserWarning, match="ECB policy rate not available"):
+        rates = fetch_policy_rates("2026-01-01", previous=PREVIOUS_RATES)
+    fed = rates[rates["central_bank"] == "Fed"]
+    ecb = rates[rates["central_bank"] == "ECB"]
+    assert list(fed["policy_rate"]) == [3.75, 4.00, 4.00]  # fresh, last value repeated at latest date
+    assert list(ecb["policy_rate"]) == [2.25, 2.50]         # from the previous export
+    assert rates.attrs["stale_banks"] == ["ECB"]
+
+
+def test_fetch_policy_rates_all_down_without_previous_is_empty(monkeypatch):
+    def all_down(url, timeout):
+        raise requests.ConnectionError("no network")
+
+    monkeypatch.setattr(macro_sentiment.requests, "get", all_down)
+    monkeypatch.setattr(macro_sentiment.time, "sleep", lambda s: None)
+    with pytest.warns(UserWarning):
+        rates = fetch_policy_rates("2026-01-01")
+    assert rates.empty
+    assert list(rates.columns) == ["date", "central_bank", "policy_rate"]
+    assert rates.attrs["stale_banks"] == ["Fed", "ECB"]
 
 SPEECHES = pd.DataFrame({
     "date": pd.to_datetime(["2026-01-01", "2026-02-01", "2026-06-01", "2026-01-15", "2026-06-20"]),

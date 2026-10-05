@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import re
+import time
 import warnings
 from datetime import datetime
 
@@ -506,27 +507,64 @@ def parse_policy_rate_csv(text, date_col, value_col):
     return series[series.ne(series.shift())]
 
 
-def fetch_policy_rates(start, timeout=30):
+POLICY_RATE_COLUMNS = ["date", "central_bank", "policy_rate"]
+
+
+def _fetch_policy_rate(bank, url, date_col, value_col, start, timeout):
+    """One bank's policy rate changes since `start`, long format. The last
+    observed value is repeated at the latest date so step charts run up to today."""
+    resp = requests.get(url.format(start=start), timeout=timeout)
+    resp.raise_for_status()
+    full = pd.read_csv(io.StringIO(resp.text))
+    last_date = pd.to_datetime(full[date_col]).max()
+    changes = parse_policy_rate_csv(resp.text, date_col, value_col)
+    if last_date not in changes.index:
+        changes.loc[last_date] = changes.iloc[-1]
+    return pd.DataFrame({
+        "date": changes.index, "central_bank": bank, "policy_rate": changes.values,
+    })
+
+
+def fallback_policy_rates(previous, bank):
+    """The rows of `bank` from a previously exported policy rate table, or an
+    empty frame if there is none (first run, or the bank was missing before)."""
+    if previous is None or previous.empty:
+        return pd.DataFrame(columns=POLICY_RATE_COLUMNS)
+    rows = previous[previous["central_bank"] == bank].copy()
+    rows["date"] = pd.to_datetime(rows["date"])
+    return rows[POLICY_RATE_COLUMNS].reset_index(drop=True)
+
+
+def fetch_policy_rates(start, timeout=30, retries=2, previous=None):
     """Fed target rate (upper bound) and ECB deposit rate since `start`,
-    long format: date, central_bank, policy_rate. The last observed value is
-    repeated at the latest date so step charts run up to today."""
+    long format: date, central_bank, policy_rate.
+
+    Each bank is fetched on its own, with `retries` extra attempts. If a source
+    still fails, that bank's rows from `previous` (the last exported table) are
+    kept instead, so a temporary outage of one API neither drops the other bank
+    nor wipes the reference. Banks served from `previous` are listed in
+    `result.attrs["stale_banks"]`."""
     sources = {
         "Fed": (FED_POLICY_RATE_CSV, "observation_date", "DFEDTARU"),
         "ECB": (ECB_POLICY_RATE_CSV, "TIME_PERIOD", "OBS_VALUE"),
     }
-    frames = []
+    frames, stale_banks = [], []
     for bank, (url, date_col, value_col) in sources.items():
-        resp = requests.get(url.format(start=start), timeout=timeout)
-        resp.raise_for_status()
-        full = pd.read_csv(io.StringIO(resp.text))
-        last_date = pd.to_datetime(full[date_col]).max()
-        changes = parse_policy_rate_csv(resp.text, date_col, value_col)
-        if last_date not in changes.index:
-            changes.loc[last_date] = changes.iloc[-1]
-        frames.append(pd.DataFrame({
-            "date": changes.index, "central_bank": bank, "policy_rate": changes.values,
-        }))
-    return pd.concat(frames, ignore_index=True)
+        for attempt in range(retries + 1):
+            try:
+                frames.append(_fetch_policy_rate(bank, url, date_col, value_col, start, timeout))
+                break
+            except (requests.RequestException, ValueError, KeyError, IndexError) as e:
+                if attempt < retries:
+                    time.sleep(2 * (attempt + 1))
+                    continue
+                warnings.warn(f"{bank} policy rate not available ({e}) -- keeping the last exported values.")
+                frames.append(fallback_policy_rates(previous, bank))
+                stale_banks.append(bank)
+    frames = [f for f in frames if not f.empty]
+    result = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=POLICY_RATE_COLUMNS)
+    result.attrs["stale_banks"] = stale_banks
+    return result
 
 
 def rolling_stance(sentiment, window="90D"):
